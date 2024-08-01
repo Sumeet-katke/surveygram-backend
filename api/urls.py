@@ -5,15 +5,30 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 
+from api.views import (
+    getQuestionDetails
+)
 
 
 
-from .views import CustomUserCreate, MyTokenObtainPairView, CookieTokenRefreshView
+from .views import CustomUserCreate, MyTokenObtainPairView, CookieTokenRefreshView, CompanyRegistrationView
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('register/', CustomUserCreate.as_view(), name = "register user"),
     path('login/', MyTokenObtainPairView.as_view(), name='login user'),
-    path('api/token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
+    # path('token/refresh/', CookieTokenRefreshView.as_view(), name='token_refresh'),
+
+
+    #-------------------------------------User APIEndpoints-----------------------------------------------
+    path('questionFetch/', getQuestionDetails.as_view(), name="fetch all questions"),
+
+
+
+
+
+
+    #----------------------------------------Company APIEndpoints-----------------------------------------
+    path('register-company/', CompanyRegistrationView.as_view(), name="register company")
 ]

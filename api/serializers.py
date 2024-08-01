@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, role
+from .models import CustomUser, role, survey, questions,Company,  response, surveyHistory
 
 class CustomUserSerializer(serializers.ModelSerializer):
     roleId = serializers.PrimaryKeyRelatedField(queryset=role.objects.all())
@@ -20,3 +20,32 @@ class CustomUserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
+
+class surveySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = survey
+        fields = '__all__'
+
+class questionsSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = questions
+        fields = "__all__"
+
+class responseSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = response
+        fields = "__all__"
+
+class surveyHistorySerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = surveyHistory
+        fields = "__all__"
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = ['url', 'sector']
