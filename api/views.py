@@ -28,10 +28,11 @@ from .models import CustomUser
 class CustomUserCreate(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
     serializer_class = CustomUserSerializer
-    permission_classes = (AllowAny)
+    permission_classes = [AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
+        print(type(request.data['roleId']))
         serializer.is_valid(raise_exception=True)
         # Ensure role is provided and valid during registration
         role_id = serializer.validated_data.pop('roleId', None)  # Assuming you pass roleId in the request
@@ -55,7 +56,7 @@ from django.utils import timezone
 
 
 class CompanyRegistrationView(generics.CreateAPIView):
-    permission_classes = (AllowAny,)  # Allow anyone to register a company
+    permission_classes = [AllowAny]  # Allow anyone to register a company
 
     def post(self, request, *args, **kwargs):
         user_serial = CustomUserSerializer(data=request.data)
@@ -67,18 +68,18 @@ class CompanyRegistrationView(generics.CreateAPIView):
         if user_serializer and company_serializer:
 
             # Create the user first
-            user = user_serializer.save(roleId=role.objects.get(id=2))  # Assuming role ID 2 is for companies
+            user = user_serial.save(roleId=role.objects.get(id=2))  # Assuming role ID 2 is for companies
 
             # Now create the company and associate it with the user
-            company = company_serializer.save(userId=user)
+            company = company_serial.save(userId=user)
 
             # Generate tokens
             refresh = RefreshToken.for_user(user)
 
             # Include company details in the response
             response_data = {
-                'user': user_serializer.data,
-                'company': company_serializer.data,
+                'user': user_serial.data,
+                'company': company_serial.data,
                 'refresh': str(refresh),
                 'access': str(refresh.access_token),
             }
@@ -123,7 +124,7 @@ class MyTokenObtainPairView(TokenObtainPairView):
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-
+        print(serializer)
         try:
             serializer.is_valid(raise_exception=True)
             return Response(serializer.validated_data, status=status.HTTP_200_OK)
