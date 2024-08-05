@@ -3,6 +3,7 @@ from django.contrib.auth.models import AbstractUser
 from .manager import CustomAccountManage
 # from datetime import datetime
 from django.utils import timezone
+from datetime import timedelta
 
 # Create your models here.
 class role(models.Model):
@@ -12,7 +13,6 @@ class role(models.Model):
     def __str__(self) -> str:
         return str(self.id)
     
-
 class CustomUser (AbstractUser):
     username = None
     id = models.AutoField(primary_key=True)
@@ -36,21 +36,42 @@ class rewards(models.Model):
     id = models.AutoField(primary_key=True)
     name = models.CharField(max_length=50)
 
+class typeOfQuestion(models.Model):
+    id = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=1000, null=False)
+    time = models.TimeField(null=False)
+    reward = models.IntegerField()
+
 class survey(models.Model):
     id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=100)
+    title = models.CharField(max_length=250)
     reward = models.ForeignKey(rewards, on_delete=models.PROTECT)
     rewardQuantity = models.IntegerField()
-    isActive = models.BooleanField(default=True)
+    startDate = models.DateField(default= timezone.now)
+    endDate = models.DateField(default= timezone.now() + timedelta(days=7))
+    ageFrom = models.IntegerField(default=18)
+    ageTo = models.IntegerField(default=35)
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
     createdTime = models.DateTimeField(default=timezone.now())
-    type = models.CharField(max_length=100)
-
+    typeOf = models.ForeignKey(typeOfQuestion, on_delete=models.PROTECT, default=1)
+    timeToFinish = models.TimeField()
+    isActive = models.BooleanField(default=True)
+    description = models.TextField(max_length=5000, null=True, blank=True)
+    def save(self, *args, **kwargs):
+        current_date = timezone.now().date()
+        if self.startDate <= current_date <= self.endDate:
+            self.isActive = True
+        else:
+            self.isActive = False
+        super().save(*args, **kwargs)
+    
+    def __str__(self):
+        return self.title
 class questions(models.Model):
     id = models.AutoField(primary_key=True)
+    surveyId = models.ForeignKey(survey, on_delete=models.CASCADE, default=None)
     question = models.CharField(max_length=1000)
-    options = models.CharField(max_length=5000)
-    timeToComplete = models.CharField(max_length=100)
+    options = models.CharField(max_length=50000)
 
 class response(models.Model):
     id = models.AutoField(primary_key=True)

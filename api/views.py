@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
-from api.serializers import surveySerializer, questionsSerializer,CompanySerializer, responseSerializer, surveyHistorySerializer
+from api.serializers import (surveySerializer, questionsSerializer,CompanySerializer, responseSerializer, surveyHistorySerializer,
+                            Userserializer)
 from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from api.models import (questions,
@@ -9,8 +10,13 @@ from api.models import (questions,
                         survey, 
                         questions, 
                         response, 
-                        surveyHistory)
+                        surveyHistory, 
+                        typeOfQuestion)
 from rest_framework import status, viewsets
+from django.db import transaction
+from datetime import datetime
+import logging
+from django.http import HttpResponseBadRequest, HttpResponseServerError
 
 User = get_user_model()
 from .models import CustomUser as User, role
@@ -24,6 +30,7 @@ from api.serializers import CustomUserSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import CustomUser
+from django.core.exceptions import ValidationError
 
 class CustomUserCreate(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -119,7 +126,7 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class MyTokenObtainPairView(TokenObtainPairView):
-    permission_classes = (AllowAny,)
+    permission_classes = [AllowAny]
     serializer_class = MyTokenObtainPairSerializer
 
     def post(self, request, *args, **kwargs):
@@ -178,3 +185,178 @@ class getQuestionDetails(APIView):
         
 #         except Exception as e:
 #             return Response(data=str(e), status=status.HTTP_400_BAD_REQUEST)
+
+import json
+
+# Set up a logger for error tracking
+logger = logging.getLogger(__name__) 
+from datetime import datetime, timedelta
+
+class PostSurvey(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        try :
+            with transaction.atomic():
+                data = json.loads(request.body)
+                # print("Data: ",data)
+                
+
+
+                required_fields = ['title', "TypeOfQuestion", "age_groupFrom", 'rewardType', "startdate", "deadLine",
+                                    "description", "no_of_question", "questions"]
+                missing_fields = [field for field in required_fields if not data.get(field)]
+                
+                if missing_fields :
+                    error = {'Error':'Missing Fields',
+                             'Missing Fields': f'{missing_fields}'}
+                    return Response(data=json.dumps(error), status=status.HTTP_400_BAD_REQUEST)
+                
+                title = data["title"]
+                TypeOfQuestion = data['TypeOfQuestion']
+                age_groupFrom = data['age_groupFrom']
+                age_groupTo = data['age_groupTo']
+                rewardType = data['rewardType']
+                startdate = datetime.strptime(data['startdate'], "%Y-%m-%d").date()
+                deadLine = datetime.strptime(data['deadLine'], "%Y-%m-%d").date()
+                description = data.get('description', '')
+                no_of_questions = int(data['no_of_question'])
+                # question = data.get('questions', [])
+                Questions = data['questions']
+
+
+                if (len(data.get("title", ''))>250):
+                    return Response(data=json.dumps({"error":"Title length greater than 200"}), status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    Reward = rewards.objects.get(name=rewardType)
+                except rewards.DoesNotExist:
+                    return Response(data="Reward doesn't exists", status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    Qtype = typeOfQuestion.objects.get(name=data.get('TypeOfQuestion', ''))
+                except typeOfQuestion.DoesNotExist:
+                    return Response(data="Wrong Question type", status=status.HTTP_400_BAD_REQUEST)
+                
+                try:
+                    companyUser = Company.objects.get(userId = request.user)
+                except Company.DoesNotExist:
+                    return Response(data="UnAuthorised Company. Doesn't exists in Database", status=status.HTTP_401_UNAUTHORIZED)
+                reward_quantity = Qtype.reward * no_of_questions
+                print("Reward: ",no_of_questions)
+                print(Qtype.time)
+                # from datetime import datetime, timedelta
+                # hours = Qtype.time.hour
+                # minutes = Qtype.time.minute
+                # seconds = Qtype.time.second
+                # total_seconds = (hours * 3600) + (minutes * 60) + seconds
+                # total_timedelta = timedelta(seconds=total_seconds)
+                # timeTofinish = (datetime.min + total_timedelta).time()
+
+                time_delta = timedelta(hours=Qtype.time.hour, minutes=Qtype.time.minute, seconds=Qtype.time.second)
+                timeTofinish = time_delta * no_of_questions
+                print(timeTofinish)
+                # print(type())
+                # total_seconds = (Qtype.time.hour * 3600 + Qtype.time.minute * 60 + Qtype.time.second) * no_of_questions
+                # timeTofinish = (datetime.min + timedelta(seconds=total_seconds)).time()
+
+
+                # timeTofinish = (datetime.min + (timedelta(hours=Qtype.time.hour, minutes=Qtype.time.minute, seconds=Qtype.time.second) * no_of_questions)).time()
+
+                # timeTofinish = Qtype.time *no_of_questions
+                print(type(age_groupFrom))
+                try:
+                    new_survey = survey.objects.create(
+                        title = title,
+                        reward = Reward,
+                        rewardQuantity = reward_quantity,
+                        startDate = startdate,
+                        endDate = deadLine,
+                        ageFrom = age_groupFrom,
+                        ageTo = age_groupTo,
+                        company = companyUser,
+                        typeOf = Qtype,
+                        timeToFinish = str(timeTofinish),
+                        description = description,
+                    )
+                    print("Creating survey")
+
+                    for question_data in Questions:
+                        print(question_data)
+                        questions.objects.create(
+                            question = question_data['question'],
+                            options = json.dumps(question_data['options']),
+                            surveyId = new_survey
+                        )
+
+                except ValidationError as e:
+                    error_data = e.message_dict if hasattr(e, 'message_dict') else e.messages
+                    return Response(data=error_data, status=status.HTTP_400_BAD_REQUEST)
+                        
+                except Exception as e:  # Catch other database errors
+                    logger.error(f"Error creating survey or questions: {e}")
+                    return HttpResponseServerError({'status': 'error', 'message': 'Failed to create survey or questions'})
+
+                return Response(data="Survery Created Successfully", status=status.HTTP_201_CREATED)
+            
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest({'status': 'error', 'message': 'Invalid JSON data'})
+        
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
+
+class UserSurveyFetch(APIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = surveySerializer
+
+    def get(self, request):
+        try:
+            # Pagination setup
+            paginator = PageNumberPagination()
+            paginator.page_size = 1  # Set the number of surveys per page
+
+            last_viewed_survey_id = request.session.get('last_viewed_survey_id', 0) 
+
+            # Retrieve inactive surveys for the current user, sorted by endDate
+            # user_company = Company.objects.get(userId=request.user)
+            surveys_query = survey.objects.filter(isActive=False, id__gt = last_viewed_survey_id).order_by('endDate')
+
+            # Paginate the queryset
+            paginated_surveys = paginator.paginate_queryset(surveys_query, request)
+
+            # Serialize the paginated surveys
+            surveys_serialized = surveySerializer(paginated_surveys, many=True)
+
+            response_data = []
+            for survey_data in surveys_serialized.data:
+                company_id = survey_data['company']
+
+                try:
+                    company_obj = Company.objects.get(id=company_id)
+                    user_obj = company_obj.userId
+                except Company.DoesNotExist:
+                    continue
+
+                company_serialized = CompanySerializer(company_obj)
+                user_serialized = Userserializer(user_obj)
+
+                survey_id = survey_data['id']
+                question_instances = questions.objects.filter(surveyId=survey_id)
+                questions_serialized = questionsSerializer(question_instances, many=True)
+
+                survey_with_details = {
+                    'survey': survey_data,
+                    'company_url': company_serialized.data['url'],
+                    'user': user_serialized.data,
+                    'questions': questions_serialized.data
+                }
+                response_data.append(survey_with_details)
+
+            # Get the paginated response
+            paginated_response = paginator.get_paginated_response(response_data)
+
+            return paginated_response 
+
+        except Exception as e:
+            logger.error(f"Error fetching surveys or companies: {e}")
+            return HttpResponseServerError({'status': 'error', 'message': 'An error occurred'})

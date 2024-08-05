@@ -6,12 +6,13 @@ from rest_framework_simplejwt.views import (
 )
 
 from api.views import (
-    getQuestionDetails
+    getQuestionDetails,
+    PostSurvey,
 )
 
 
 
-from .views import CustomUserCreate, MyTokenObtainPairView, CookieTokenRefreshView, CompanyRegistrationView
+from .views import CustomUserCreate, MyTokenObtainPairView,UserSurveyFetch, CookieTokenRefreshView, CompanyRegistrationView
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -23,6 +24,7 @@ urlpatterns = [
 
     #-------------------------------------User APIEndpoints-----------------------------------------------
     path('questionFetch/', getQuestionDetails.as_view(), name="fetch all questions"),
+    path('fetch-survey/', UserSurveyFetch.as_view(), name = "fetch all surveys"),
 
 
 
@@ -30,5 +32,6 @@ urlpatterns = [
 
 
     #----------------------------------------Company APIEndpoints-----------------------------------------
-    path('register-company/', CompanyRegistrationView.as_view(), name="register company")
+    path('register-company/', CompanyRegistrationView.as_view(), name="register company"),
+    path('post-survey/', PostSurvey.as_view(), name="Post Survey"),
 ]

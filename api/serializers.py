@@ -21,11 +21,32 @@ class CustomUserSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+from .models import survey, rewards, Company, typeOfQuestion
+
+class RewardSerializer(serializers.ModelSerializer):  # Nested serializer for 'reward'
+    class Meta:
+        model = rewards
+        fields = ['name']  # Or other fields you want to include
+
+class CompanySerializer(serializers.ModelSerializer):  # Nested serializer for 'company'
+    class Meta:
+        model = Company
+        fields = ('id', 'userId')  # Or other relevant fields
+
+class TypeOfQuestionSerializer(serializers.ModelSerializer):  # Nested serializer for 'typeOf'
+    class Meta:
+        model = typeOfQuestion
+        fields = ('id', 'name')  # Or other relevant fields
+
 class surveySerializer(serializers.ModelSerializer):
+    reward = RewardSerializer()
+    # company = CompanySerializer()
+    typeOf = TypeOfQuestionSerializer()
+    timeToFinish = serializers.TimeField(format="%H:%M:%S")  # Format the time
 
     class Meta:
         model = survey
-        fields = '__all__'
+        fields = ["id", "title", "reward", "rewardQuantity", "company", "startDate", "endDate", "timeToFinish", "description", "ageFrom", "ageTo", "typeOf"]  # Include all relevant fieldse", "reward", "rewardQuantity", "company", "startDate", "timeToFinish", "description"]
 
 class questionsSerializer(serializers.ModelSerializer):
 
@@ -48,4 +69,9 @@ class surveyHistorySerializer(serializers.ModelSerializer):
 class CompanySerializer(serializers.ModelSerializer):
     class Meta:
         model = Company
-        fields = ['url', 'sector']
+        fields = "__all__"
+
+class Userserializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ["first_name", "email"]
