@@ -12,7 +12,13 @@ from api.views import (
 
 
 
-from .views import CustomUserCreate, MyTokenObtainPairView,UserSurveyFetch, CookieTokenRefreshView, CompanyRegistrationView
+from .views import (CustomUserCreate,Responses,
+                    MyTokenObtainPairView,
+                    UserSurveyFetch,
+                    CookieTokenRefreshView,
+                    CompanyRegistrationView,
+                    SurveyHistory,
+                    )
 
 urlpatterns = [
     path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
@@ -25,6 +31,8 @@ urlpatterns = [
     #-------------------------------------User APIEndpoints-----------------------------------------------
     path('questionFetch/', getQuestionDetails.as_view(), name="fetch all questions"),
     path('fetch-survey/', UserSurveyFetch.as_view(), name = "fetch all surveys"),
+    path('record-response/', Responses.as_view(), name="Collecting Response"),
+    path('user-survey-history/', SurveyHistory.as_view(), name="Getting User Survey History"),
 
 
 

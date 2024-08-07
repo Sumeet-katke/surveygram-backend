@@ -44,7 +44,7 @@ class typeOfQuestion(models.Model):
 
 class survey(models.Model):
     id = models.AutoField(primary_key=True)
-    title = models.CharField(max_length=250)
+    title = models.CharField(max_length=40)
     reward = models.ForeignKey(rewards, on_delete=models.PROTECT)
     rewardQuantity = models.IntegerField()
     startDate = models.DateField(default= timezone.now)
@@ -52,7 +52,7 @@ class survey(models.Model):
     ageFrom = models.IntegerField(default=18)
     ageTo = models.IntegerField(default=35)
     company = models.ForeignKey(Company, on_delete=models.CASCADE)
-    createdTime = models.DateTimeField(default=timezone.now())
+    createdTime = models.DateTimeField(default=timezone.now)
     typeOf = models.ForeignKey(typeOfQuestion, on_delete=models.PROTECT, default=1)
     timeToFinish = models.TimeField()
     isActive = models.BooleanField(default=True)
@@ -78,6 +78,7 @@ class response(models.Model):
     questionId = models.ForeignKey(questions, on_delete=models.CASCADE)
     userID = models.ForeignKey(CustomUser, on_delete=models.PROTECT)
     userResponse = models.CharField(max_length=500, null=False)
+    surveyId = models.ForeignKey(survey, default=None, on_delete=models.CASCADE)
 
 
 class surveyHistory(models.Model):
@@ -85,3 +86,4 @@ class surveyHistory(models.Model):
     userId = models.ForeignKey(CustomUser, on_delete=models.PROTECT)
     companyId = models.ForeignKey(Company, on_delete=models.CASCADE)
     surveyID = models.ForeignKey(survey, on_delete=models.CASCADE)
+    rewardStatus = models.BooleanField(default=False)

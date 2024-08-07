@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from rest_framework.views import APIView
 from api.serializers import (surveySerializer, questionsSerializer,CompanySerializer, responseSerializer, surveyHistorySerializer,
-                            Userserializer)
+                            Userserializer, surveyHistorySerializer)
 from django.contrib.auth import get_user_model
 from rest_framework.response import Response
 from api.models import (questions,
@@ -313,14 +313,24 @@ class UserSurveyFetch(APIView):
         try:
             # Pagination setup
             paginator = PageNumberPagination()
-            paginator.page_size = 1  # Set the number of surveys per page
+            paginator.page_size = 3  # Set the number of surveys per page
 
             last_viewed_survey_id = request.session.get('last_viewed_survey_id', 0) 
 
             # Retrieve inactive surveys for the current user, sorted by endDate
             # user_company = Company.objects.get(userId=request.user)
-            surveys_query = survey.objects.filter(isActive=False, id__gt = last_viewed_survey_id).order_by('endDate')
+            answered_survey_ids = surveyHistory.objects.filter(
+                userId=request.user
+            ).values_list('surveyID', flat=True)
 
+            # Retrieve inactive surveys excluding those already answered by the user
+            surveys_query = survey.objects.filter(
+                isActive=True,
+                id__gt=last_viewed_survey_id
+            ).exclude(
+                id__in=answered_survey_ids 
+            ).order_by('endDate')
+            # print(surveys_query)
             # Paginate the queryset
             paginated_surveys = paginator.paginate_queryset(surveys_query, request)
 
@@ -360,3 +370,61 @@ class UserSurveyFetch(APIView):
         except Exception as e:
             logger.error(f"Error fetching surveys or companies: {e}")
             return HttpResponseServerError({'status': 'error', 'message': 'An error occurred'})
+
+
+class Responses(APIView):
+    permission_classes= [IsAuthenticated]
+
+    def post(self, request):
+        try:
+            with transaction.atomic():
+
+                data = request.data
+
+                # questionId = data['questionId']
+                userObj = request.user
+                # userResponse = data
+
+                for questionIdData, responses in data.items():
+                    try:
+                        questionObj = questions.objects.get(id=questionIdData)
+                        print(questionObj.surveyId.id)
+                        surveyObj = survey.objects.get(id=questionObj.surveyId.id)
+                    except questions.DoesNotExist:
+                        return Response(data=f"question Id {questionIdData} doesn't exists in the database", status=status.HTTP_400_BAD_REQUEST)
+                    
+                    responsesObj = response.objects.create(
+                        questionId = questionObj,
+                        userID = userObj,
+                        userResponse = responses,
+                        surveyId = questionObj.surveyId
+                    )
+                    print(surveyObj.company)
+                    responsesObj.save()
+                surveyHistObj = surveyHistory.objects.create(
+                    userId = userObj,
+                    companyId = surveyObj.company,
+                    surveyID = surveyObj
+                )
+
+                surveyHistObj.save()
+                return Response(data=f"Response collectd with ID {responsesObj.id}", status=status.HTTP_202_ACCEPTED)
+        except Exception as e:
+                return Response(data=f"{str(e)} Response", status=status.HTTP_400_BAD_REQUEST)
+                
+
+class SurveyHistory(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            try:    
+                surveys = surveyHistory.objects.filter(userId=request.user.id)
+            except surveyHistory.DoesNotExist:
+                return Response(data=None, status=status.HTTP_204_NO_CONTENT)
+            
+            surveyData = surveyHistorySerializer(surveys, many=True)
+            return Response(data=surveyData.data, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response(data=f"{str(e)}")

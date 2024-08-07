@@ -75,3 +75,16 @@ class Userserializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = ["first_name", "email"]
+
+# cfrom .models import Company, survey # Import your models 
+
+class surveyHistorySerializer(serializers.ModelSerializer):
+    first_name = serializers.CharField(source='companyId.userId.first_name', read_only=True) 
+    startDate = serializers.DateField(source='surveyID.startDate', read_only=True)
+
+    class Meta:
+        model = surveyHistory
+        fields = "__all__"  # Include all fields from surveyHistory
+
+
+# class 
