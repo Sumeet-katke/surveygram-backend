@@ -18,6 +18,7 @@ from .views import (CustomUserCreate,Responses,
                     CookieTokenRefreshView,
                     CompanyRegistrationView,
                     SurveyHistory,
+                    CompanySurveyHistory,
                     )
 
 urlpatterns = [
@@ -42,4 +43,5 @@ urlpatterns = [
     #----------------------------------------Company APIEndpoints-----------------------------------------
     path('register-company/', CompanyRegistrationView.as_view(), name="register company"),
     path('post-survey/', PostSurvey.as_view(), name="Post Survey"),
+    path('company-history/', CompanySurveyHistory.as_view(), name="Get history"),
 ]

@@ -428,3 +428,17 @@ class SurveyHistory(APIView):
         
         except Exception as e:
             return Response(data=f"{str(e)}")
+        
+
+class CompanySurveyHistory(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            comapnyId = Company.objects.get(userId=request.user.id)
+            print(comapnyId.id)
+            surveys = surveyHistory.objects.filter(companyId = comapnyId.id)
+            responsedata = surveyHistorySerializer(surveys, many=True).data
+            return Response(data=responsedata, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(data=str(e))
